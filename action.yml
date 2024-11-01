@@ -1,0 +1,66 @@
+name: "Upgrade Dependencies Action"
+description: "Composite action to upgrade dependencies, create a diff, and open a pull request"
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4.2.2
+      with:
+        fetch-depth: 0
+        ref: main
+    - name: Install Node.js
+      shell: bash
+      run: |
+        curl -fsSL https://nodejs.org/dist/v22.11.0/node-v22.11.0-linux-x64.tar.xz -o node-v22.11.0-linux-x64.tar.xz
+        sudo tar -xJf node-v22.11.0-linux-x64.tar.xz -C /usr/local
+        echo "/usr/local/node-v22.11.0-linux-x64/bin" >> $GITHUB_PATH
+    - name: Corepack
+      shell: bash
+      run: |
+        sudo corepack enable
+        sudo corepack prepare pnpm@latest --activate
+    - name: Restore NPM node_modules cache
+      uses: actions/cache/restore@v4.1.2
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node_modules-${{ hashFiles('pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-node_modules-
+    - name: Install pnpm and dependencies
+      shell: bash
+      run: |
+        corepack enable
+        corepack prepare pnpm@latest --activate
+        pnpm install
+    - name: Update Dependencies
+      shell: bash
+      run: |
+        pnpm up --latest
+        git diff > diff.txt
+        echo "diff=$(cat diff.txt)" >> $GITHUB_ENV
+        rm -f diff.txt
+    - name: Cache NPM dependencies
+      uses: actions/cache@v4.1.2
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node_modules-${{ hashFiles('pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-node_modules-
+    - name: Create Pull Request
+      id: create_pr
+      uses: peter-evans/create-pull-request@v7.0.5
+      with:
+        token: ${{ secrets.P6_PGOLLUCCI_GH_TOKEN }}
+        commit-message: |
+          chore(deps): upgrade dependencies
+        branch: github-actions/upgrade-main
+        title: "chore(deps): upgrade dependencies"
+        labels: auto-merge
+        body: |
+          Upgrades project dependencies. The following changes were made:
+          ```diff
+          ${{ env.diff }}
+          ```
+        author: github-actions <github-actions@github.com>
+        committer: github-actions <github-actions@github.com>
+        signoff: true
