@@ -1,6 +1,10 @@
 name: "P6 GHA: Upgrade Dependencies for a CDK App"
 description: "P6 GHA: Upgrade Dependencies for a CDK App"
 author: "Philip M. Gollucci"
+inputs:
+  gh_token:
+    description: "GitHub Token"
+    required: true
 runs:
   using: "composite"
   steps:
@@ -30,16 +34,14 @@ runs:
     - name: Install pnpm and dependencies
       shell: bash
       run: |
-        corepack enable
-        corepack prepare pnpm@latest --activate
         pnpm install
     - name: Update Dependencies
       shell: bash
       run: |
         pnpm up --latest
-        git diff > diff.txt
-        echo "diff=$(cat diff.txt)" >> $GITHUB_ENV
-        rm -f diff.txt
+        echo "diff<<EOF" >> $GITHUB_ENV
+        git diff >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
     - name: Cache NPM dependencies
       uses: actions/cache@v4.1.2
       with:
@@ -51,7 +53,7 @@ runs:
       id: create_pr
       uses: peter-evans/create-pull-request@v7.0.5
       with:
-        token: ${{ secrets.P6_PGOLLUCCI_GH_TOKEN }}
+        token: ${{ inputs.gh_token }}
         commit-message: |
           chore(deps): upgrade dependencies
         branch: github-actions/upgrade-main
