@@ -19,12 +19,14 @@ runs:
       shell: bash
       run: |
         pnpm up --latest
+        git diff --stat > /tmp/diff.txt
         echo "diff<<EOF" >> $GITHUB_ENV
-        git diff >> $GITHUB_ENV
+        cat /tmp/diff.txt >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV
+        rm /tmp/diff.txt
     - name: Create Pull Request
       id: create_pr
-      uses: peter-evans/create-pull-request@v7.0.5
+      uses: peter-evans/create-pull-request@v7.0.6
       with:
         token: ${{ inputs.gh_token }}
         commit-message: |
