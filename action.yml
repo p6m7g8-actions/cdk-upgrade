@@ -19,6 +19,9 @@ runs:
       shell: bash
       run: |
         pnpm up --latest
+    - name: Get Dependency Diff
+      shell: bash
+      run: |
         git diff --stat > /tmp/diff.txt
         echo "diff<<EOF" >> $GITHUB_ENV
         cat /tmp/diff.txt >> $GITHUB_ENV
