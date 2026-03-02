@@ -24,29 +24,10 @@ runs:
         git diff
     - name: Normalize GitHub token
       id: token
-      shell: bash
-      run: |
-        sanitize() {
-          local t="$1"
-          t="${t#https://x-access-token:}"
-          t="${t#x-access-token:}"
-          t="${t%@github.com*}"
-          echo "$t"
-        }
-
-        input_token="$(sanitize "${{ inputs.gh_token }}")"
-        default_token="$(sanitize "${{ github.token }}")"
-        auth_ok() {
-          local t="$1"
-          [[ -n "$t" ]] || return 1
-          curl -fsS -H "Authorization: Bearer ${t}" https://api.github.com/user >/dev/null
-        }
-
-        if auth_ok "${input_token}"; then
-          echo "value=${input_token}" >> "$GITHUB_OUTPUT"
-        else
-          echo "value=${default_token}" >> "$GITHUB_OUTPUT"
-        fi
+      uses: p6m7g8-actions/gh-token-normalize@main
+      with:
+        preferred-token: ${{ inputs.gh_token }}
+        default-token: ${{ github.token }}
     - name: Configure authenticated git remote
       shell: bash
       run: |
