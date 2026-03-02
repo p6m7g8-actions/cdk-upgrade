@@ -12,7 +12,6 @@ runs:
       uses: p6m7g8-actions/checkout@main
       with:
         fetch-depth: 0
-        ref: main
     - name: Node
       uses: p6m7g8-actions/node-setup@main
     - name: Update Dependencies
@@ -23,11 +22,41 @@ runs:
       shell: bash
       run: |
         git diff
+    - name: Normalize GitHub token
+      id: token
+      shell: bash
+      run: |
+        sanitize() {
+          local t="$1"
+          t="${t#https://x-access-token:}"
+          t="${t#x-access-token:}"
+          t="${t%@github.com*}"
+          echo "$t"
+        }
+
+        input_token="$(sanitize "${{ inputs.gh_token }}")"
+        default_token="$(sanitize "${{ github.token }}")"
+        auth_ok() {
+          local t="$1"
+          [[ -n "$t" ]] || return 1
+          curl -fsS -H "Authorization: Bearer ${t}" https://api.github.com/user >/dev/null
+        }
+
+        if auth_ok "${input_token}"; then
+          echo "value=${input_token}" >> "$GITHUB_OUTPUT"
+        else
+          echo "value=${default_token}" >> "$GITHUB_OUTPUT"
+        fi
+    - name: Configure authenticated git remote
+      shell: bash
+      run: |
+        git remote set-url origin "https://x-access-token:${{ steps.token.outputs.value }}@github.com/${{ github.repository }}.git"
     - name: Create Pull Request
       id: create_pr
       uses: peter-evans/create-pull-request@v8.1.0
       with:
-        token: ${{ inputs.gh_token }}
+        token: ${{ steps.token.outputs.value }}
+        base: main
         commit-message: |
           chore(deps): upgrade dependencies
         branch: github-actions/upgrade-main
