@@ -3,9 +3,8 @@ description: "P6 GHA: Upgrade Dependencies for a CDK App"
 author: "Philip M. Gollucci"
 inputs:
   gh_token:
-    description: "Fallback GitHub token (e.g., P6_A_GH_TOKEN)"
-    required: false
-    default: ""
+    description: "Automation token used to trigger auto-approve events (P6_A_GH_TOKEN)"
+    required: true
 runs:
   using: "composite"
   steps:
@@ -55,3 +54,13 @@ runs:
         author: github-actions <github-actions@github.com>
         committer: github-actions <github-actions@github.com>
         signoff: true
+    - name: Re-label PR with automation token
+      if: steps.create_pr.outputs.pull-request-number != ''
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.gh_token || github.token }}
+      run: |
+        pr="${{ steps.create_pr.outputs.pull-request-number }}"
+        repo="${{ github.repository }}"
+        gh api -X DELETE "repos/${repo}/issues/${pr}/labels/auto-approve" || true
+        gh api "repos/${repo}/issues/${pr}/labels" -f labels[]='auto-approve'
